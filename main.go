@@ -34,12 +34,24 @@ func main() {
 
 	// syscall.Kill(syscall.Getpid(), syscall.SIGCHLD)
 
-
-	cmd := exec.Command("sleep", "5")
-	err := cmd.Start()
+	path, err := exec.LookPath("sleep")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// var attr os.ProcAttr
+	// args := []string{"sleep", "5"}
+	// os.StartProcess or os/exec.Command both cannot waitpid(-1, ...)
+	// proc, err := os.StartProcess(path, args, &attr)
+
+	var attr syscall.ProcAttr
+	args := []string{"sleep", "5"}
+	pid, err := syscall.ForkExec(path, args, &attr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// log.Printf("Process %d started", proc.Pid)
+	log.Printf("Process %d started", pid)
 	log.Printf("Waiting child to finished")
 	<-done
 }
