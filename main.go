@@ -6,14 +6,14 @@ import (
 	"os/signal"
 	"os/exec"
 	"syscall"
-	"time"
+	// "time"
+	"log"
 )
 
 
 type sigHandler func(c <-chan os.Signal)
 
 func registerSig(handler sigHandler) {
-	fmt.Println("in registerSig")
 
 	// must be buffered channel
 	c := make(chan os.Signal, 1)
@@ -24,14 +24,23 @@ func registerSig(handler sigHandler) {
 }
 
 func main() {
+	done := make(chan bool, 1)
 	registerSig(func(c <-chan os.Signal) {
 		// fmt.Println("sighandler start")
 		sig := <-c
 		fmt.Println(sig)
+		done <- true
 	})
 
-	syscall.Kill(syscall.Getpid(), syscall.SIGCHLD)
+	// syscall.Kill(syscall.Getpid(), syscall.SIGCHLD)
 
-	time.Sleep(2 * time.Second)
+
+	cmd := exec.Command("sleep", "5")
+	err := cmd.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Waiting child to finished")
+	<-done
 }
 
