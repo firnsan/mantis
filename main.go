@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"os"
 	"os/signal"
 	"os/exec"
@@ -25,10 +25,30 @@ func registerSig(handler sigHandler) {
 
 func main() {
 	done := make(chan bool, 1)
+	children := 0
 	registerSig(func(c <-chan os.Signal) {
-		// fmt.Println("sighandler start")
-		sig := <-c
-		fmt.Println(sig)
+		// func to handler SIGCHLD
+		for {
+			_ = <-c
+
+			for {
+				var wstatus syscall.WaitStatus
+				pid, err := syscall.Wait4(-1, &wstatus, syscall.WNOHANG, nil)
+				if pid<=0 {
+					break
+				}
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				children--
+				log.Printf("Process %d quited", pid)
+			}
+			// all children have done
+			if children == 0 {
+				break
+			}
+		}
 		done <- true
 	})
 
@@ -42,16 +62,18 @@ func main() {
 	// var attr os.ProcAttr
 	// args := []string{"sleep", "5"}
 	// os.StartProcess or os/exec.Command both cannot waitpid(-1, ...)
-	// proc, err := os.StartProcess(path, args, &attr)
-
-	var attr syscall.ProcAttr
-	args := []string{"sleep", "5"}
-	pid, err := syscall.ForkExec(path, args, &attr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// proc, _ := os.StartProcess(path, args, &attr)
 	// log.Printf("Process %d started", proc.Pid)
-	log.Printf("Process %d started", pid)
+	for i:=0; i<8; i++ {
+		var attr syscall.ProcAttr
+		args := []string{"sleep", "5"}
+		pid, err := syscall.ForkExec(path, args, &attr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		children++
+		log.Printf("Process %d started", pid)
+	}
 	log.Printf("Waiting child to finished")
 	<-done
 }
