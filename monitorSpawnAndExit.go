@@ -32,10 +32,13 @@ func testSig() {
 		for {
 			_ = <-c
 
+			// for loop is to deal with leaking of the signal when processing
+			// so when received a sigchld, call wait4 as much as we can
 			for {
 				var wstatus syscall.WaitStatus
 				pid, err := syscall.Wait4(-1, &wstatus, syscall.WNOHANG, nil)
 				if pid<=0 {
+					// log.Println("no exited child")
 					break
 				}
 				if err != nil {
@@ -55,7 +58,7 @@ func testSig() {
 
 	// syscall.Kill(syscall.Getpid(), syscall.SIGCHLD)
 
-	binary := "cat"
+	binary := "sleep"
 	path, err := exec.LookPath(binary)
 	if err != nil {
 		log.Fatal(err)
@@ -66,11 +69,11 @@ func testSig() {
 	// os.StartProcess or os/exec.Command both cannot waitpid(-1, ...)
 	// proc, _ := os.StartProcess(path, args, &attr)
 	// log.Printf("Process %d started", proc.Pid)
-	for i:=0; i<1; i++ {
+	for i:=0; i<8; i++ {
 		var attr syscall.ProcAttr
 		// inherit these fds , or child that need output to stdout would crash 
 		attr.Files = []uintptr{0, 1, 2}
-		args := []string{binary}
+		args := []string{binary, "3"}
 		pid, err := syscall.ForkExec(path, args, &attr)
 		if err != nil {
 			log.Fatal(err)
@@ -93,7 +96,7 @@ func testPipe() {
 		log.Fatal(err)
 	}
 
-	for i:=0; i<1; i++ {
+	for i:=0; i<8; i++ {
 
 		lIn, rOut, err := os.Pipe()
 		if err != nil {
@@ -111,14 +114,15 @@ func testPipe() {
 		log.Printf("Process %d started", proc.Pid)
 		children++
 
-		go func(pipe *os.File){
+		go func(){
 			buf := make([]byte, 8)
-			io.ReadFull(pipe, buf)
+			io.ReadFull(lIn, buf)
 			var wstatus syscall.WaitStatus
 		retry:
 			pid, err := syscall.Wait4(-1, &wstatus, syscall.WNOHANG, nil)
 			if pid<=0 {
 				log.Println("no exited child")
+				// need to retry because process's exit is after file closing'
 				goto retry
 			}
 			if err != nil {
@@ -126,7 +130,7 @@ func testPipe() {
 			}
 			log.Printf("Process %d quited with status %d", pid, wstatus)
 			childDone <- true
-		}(lIn)
+		}()
 	}
 	// time.Sleep(8 * time.Second)
 	for i:=children; i>0; i-- {
