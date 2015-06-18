@@ -6,7 +6,8 @@ import (
 )
 
 func init() {
-	http.HandleFunc("/run", runHandler)
+	http.HandleFunc("/service/get", serviceGetHandler)
+	http.HandleFunc("/service/run", serviceRunHandler)
 }
 
 func Start() {
