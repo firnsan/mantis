@@ -98,12 +98,14 @@ func RunService(name string, command string) (int, error) {
 		return -1, err
 	}
 	_ = path
+	_ = binary
 
 	var attr os.ProcAttr
 	// 切换到service所在目录
 	attr.Dir = dir
 	attr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr, rOut}
 	proc, err := os.StartProcess(binary, args, &attr)
+
 	if err != nil {
 		log.Println(err)
 		return -1, err
@@ -121,8 +123,7 @@ func RunService(name string, command string) (int, error) {
 		Args : command,
 	}
 	running = append(running, stat)
-
-	// runningMap[proc.Pid] = len(running) - 1
+	runningMap[proc.Pid] = len(running) - 1
 
 	go func(){
 		buf := make([]byte, 8)
@@ -135,6 +136,9 @@ func RunService(name string, command string) (int, error) {
 			// need to retry because process's exit is after file closing'
 			goto retry
 		}
+		idx := runningMap[pid]
+		_ = idx
+		
 		log.Printf("Process %d quited with status %d", pid, wstatus)
 	}()
 
