@@ -93,3 +93,9 @@ func serviceRunHandler(res http.ResponseWriter, req *http.Request) {
 	msg := fmt.Sprintf("Process %d started", pid)
 	res.Write([]byte(msg))
 }
+
+
+func serviceListHandler(res http.ResponseWriter, req *http.Request) {
+	str := service.ListService()
+	res.Write([]byte(str))
+}

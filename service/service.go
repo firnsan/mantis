@@ -9,8 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"github.com/firnsan/fileutil"
 )
+
+type ProcStat struct {
+	Pid int
+	Name string
+	Start string
+	Quit string
+	Args string
+}
+
+var running []ProcStat
+var runningMap = make(map[int]int)
+var quited []ProcStat
 
 func GetService(name string, gitUrl string) error {
 	if name == "" || gitUrl == "" {
@@ -100,6 +113,17 @@ func RunService(name string, command string) (int, error) {
 	msg := fmt.Sprintf("Process %d started", proc.Pid)
 	log.Printf(msg)
 
+	// 簿记工作
+	stat := ProcStat{
+		Pid : proc.Pid,
+		Name : name,
+		Start  : time.Now().String(),
+		Args : command,
+	}
+	running = append(running, stat)
+
+	// runningMap[proc.Pid] = len(running) - 1
+
 	go func(){
 		buf := make([]byte, 8)
 		io.ReadFull(lIn, buf)
@@ -115,4 +139,14 @@ func RunService(name string, command string) (int, error) {
 	}()
 
 	return proc.Pid, nil
+}
+
+func ListService() string {
+	var names []string
+	for _, v := range running {
+		names = append(names, v.Name)
+	}
+
+	ret := strings.Join(names, " ")
+	return ret
 }
