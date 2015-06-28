@@ -9,6 +9,7 @@ func init() {
 	http.HandleFunc("/service/get", serviceGetHandler)
 	http.HandleFunc("/service/run", serviceRunHandler)
 	http.HandleFunc("/service/list", serviceListHandler)
+	http.HandleFunc("/service/shutdown", serviceShutdownHandler)
 }
 
 func Start() {

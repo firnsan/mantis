@@ -2,9 +2,10 @@ package http
 
 import (
 	"net/http"
-	"github.com/firnsan/mantis/service"
 	_ "log"
 	"fmt"
+	"strconv"
+	"github.com/firnsan/mantis/service"
 )
 
 func serviceGetHandler(res http.ResponseWriter, req *http.Request) {
@@ -98,4 +99,24 @@ func serviceRunHandler(res http.ResponseWriter, req *http.Request) {
 func serviceListHandler(res http.ResponseWriter, req *http.Request) {
 	str := service.ListService()
 	res.Write([]byte(str))
+}
+
+func serviceShutdownHandler(res http.ResponseWriter, req *http.Request) {
+	if req.ContentLength == 0 {
+		http.Error(res, "empty body", http.StatusBadRequest)
+		return
+	}
+	pidStr := req.FormValue("pid")
+	if pidStr == "" {
+		http.Error(res, "empty pid", http.StatusBadRequest)
+		return
+	}
+	pid, _ := strconv.Atoi(pidStr)
+	err := service.ShutdownService(pid)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+
+	}
+	res.Write([]byte("success shutdown: " + pidStr))
 }

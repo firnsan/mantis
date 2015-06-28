@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"bytes"
+	"encoding/json"
 	"github.com/firnsan/fileutil"
 )
 
@@ -146,11 +148,22 @@ func RunService(name string, command string) (int, error) {
 }
 
 func ListService() string {
-	var names []string
-	for _, v := range running {
-		names = append(names, v.Name)
+	outBuf := new(bytes.Buffer)
+	err := json.NewEncoder(outBuf).Encode(running)
+	if err != nil {
+		log.Println("failed to marshal json")
 	}
+	return outBuf.String()
+}
 
-	ret := strings.Join(names, " ")
-	return ret
+func ShutdownService(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	err = proc.Kill()
+	if err != nil {
+		return err
+	}
+	return nil
 }
