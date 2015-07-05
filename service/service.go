@@ -138,7 +138,7 @@ func spawnProc(path string, binary string, args []string) (int, error) {
 	return proc.Pid, nil
 }
 
-func RunInstance(instance Instance) (int, error) {
+func RunInstance(instance *Instance) (int, error) {
 	serviceName := instance.Service
 	name := instance.Name
 	path := instance.Path
@@ -161,21 +161,23 @@ func RunInstance(instance Instance) (int, error) {
 	}
 
 	// mkdir if path not exists
-	if err := fileutil.InsureDir(path); err !=  nil {
-		msg := fmt.Sprintf("fail to create path: %s : %s", path, err)
-		log.Println(msg)
-		return -1, errors.New(msg)
+	if  !fileutil.IsExist(path) {
+		if err := fileutil.Mkdir(path); err != nil {
+			msg := fmt.Sprintf("fail to create path: %s : %s", path, err)
+			log.Println(msg)
+			return -1, errors.New(msg)
+		}
+
+		// 从servicePath复制到path
+		copyCmd := "cp " + servicePath + "/* " + path
+		cmd := exec.Command("sh", "-c", copyCmd)
+		if err := cmd.Run(); err != nil {
+			msg := fmt.Sprintf("fail to copy to: %s : %s", path, err)
+			log.Println(msg)
+			return -1, errors.New(msg)
+		}
 	}
 
-	// 从servicePath复制到path
-	copyCmd := "cp " + servicePath + "/* " + path
-	cmd := exec.Command("sh", "-c", copyCmd)
-	err := cmd.Run()
-	if err != nil {
-		msg := fmt.Sprintf("fail to copy to: %s : %s", path, err)
-		log.Println(msg)
-		return -1, errors.New(msg)
-	}
 
 
 	pid, err := spawnProc(path, binary, args);

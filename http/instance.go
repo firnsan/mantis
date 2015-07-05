@@ -18,25 +18,21 @@ func instanceRunHandler(res http.ResponseWriter, req *http.Request) {
 
 	buf := make([]byte, req.ContentLength)
 	req.Body.Read(buf)
-	var instance service.Instance
+
+	instance := new(service.Instance)
 	json.Unmarshal(buf, instance)
 
-	serviceName := req.FormValue("service")
-	command := req.FormValue("cmd")
-	gitUrl := req.FormValue("git")
-	autoUpdate := req.FormValue("autoUpdate")
-	buildCmd := req.FormValue("buildCmd")
-	autoBuild := req.FormValue("autoBuild")
 
-	if  serviceName == "" {
+	if  instance.Service == "" {
 		http.Error(res, "empty service", http.StatusBadRequest)
 		return
 	}
-	if  command == "" {
+	if  instance.Cmd == "" {
 		http.Error(res, "empty command", http.StatusBadRequest)
 		return
 	}
 
+	/*
 	// 下载服务
 	if gitUrl != "" {
 		err := service.GetService(serviceName, gitUrl, autoUpdate=="true")
@@ -54,7 +50,7 @@ func instanceRunHandler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
+*/
 	// 运行服务
 	pid, err := service.RunInstance(instance)
 	if err != nil {
