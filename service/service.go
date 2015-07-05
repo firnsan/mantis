@@ -27,7 +27,7 @@ var running []ProcStat
 var runningMap = make(map[int]int)
 var quited []ProcStat
 
-func GetService(name string, gitUrl string) error {
+func GetService(name string, gitUrl string, autoUpdate bool) error {
 	if name == "" || gitUrl == "" {
 		return errors.New("empty name or git")
 	}
@@ -41,7 +41,7 @@ func GetService(name string, gitUrl string) error {
 			log.Println(msg)
 			return errors.New(msg)
 		}
-	} else {
+	} else if autoUpdate {
 		// return errors.New("already exists: " + name)
 		// update this service
 		cmd := exec.Command("git", "pull")
@@ -75,7 +75,7 @@ func BuildService(name string, buildCmd string)  error {
 	return nil
 }
 
-func RunService(name string, command string) (int, error) {
+func RunInstance(name string, command string) (int, error) {
 	if name == "" || command == "" {
 		return -1, errors.New("empty name or command")
 	}
@@ -147,7 +147,7 @@ func RunService(name string, command string) (int, error) {
 	return proc.Pid, nil
 }
 
-func ListService() string {
+func ListInstance() string {
 	outBuf := new(bytes.Buffer)
 	err := json.NewEncoder(outBuf).Encode(running)
 	if err != nil {
@@ -156,7 +156,7 @@ func ListService() string {
 	return outBuf.String()
 }
 
-func ShutdownService(pid int) error {
+func ShutdownInstance(pid int) error {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		return err
