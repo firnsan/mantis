@@ -5,6 +5,7 @@ import (
 	_ "log"
 	"fmt"
 	"strconv"
+	"encoding/json"
 	"github.com/firnsan/mantis/service"
 )
 
@@ -14,6 +15,11 @@ func instanceRunHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "empty body", http.StatusBadRequest)
 		return
 	}
+
+	buf := make([]byte, req.ContentLength)
+	req.Body.Read(buf)
+	var instance service.Instance
+	json.Unmarshal(buf, instance)
 
 	serviceName := req.FormValue("service")
 	command := req.FormValue("cmd")
@@ -50,7 +56,7 @@ func instanceRunHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// 运行服务
-	pid, err := service.RunInstance(serviceName, command)
+	pid, err := service.RunInstance(instance)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return

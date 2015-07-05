@@ -15,6 +15,18 @@ import (
 	"github.com/firnsan/fileutil"
 )
 
+type Service struct {
+	Git string `json:"git"`
+	BuildCmd string `json:"buildCmd"`
+}
+
+type Instance struct {
+	Service string `json:"service"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Cmd string `json:"cmd"`
+}
+
 type ProcStat struct {
 	Pid int
 	Name string
@@ -31,10 +43,10 @@ func GetService(name string, gitUrl string, autoUpdate bool) error {
 	if name == "" || gitUrl == "" {
 		return errors.New("empty name or git")
 	}
-	dir := "services/" + name
-	if !fileutil.IsExist(dir) {
+	servicePath := "services/" + name
+	if !fileutil.IsExist(servicePath) {
 		// 下载
-		cmd := exec.Command("git", "clone", gitUrl, dir)
+		cmd := exec.Command("git", "clone", gitUrl, servicePath)
 		err := cmd.Run()
 		if err != nil {
 			msg := "failed to git clone: " + name
@@ -45,7 +57,7 @@ func GetService(name string, gitUrl string, autoUpdate bool) error {
 		// return errors.New("already exists: " + name)
 		// update this service
 		cmd := exec.Command("git", "pull")
-		cmd.Dir = dir
+		cmd.Dir = servicePath
 		err := cmd.Run()
 		if err != nil {
 			log.Println(err)
@@ -61,10 +73,10 @@ func BuildService(name string, buildCmd string)  error {
 		return errors.New("empty name or buildCmd")
 	}
 
-	dir := "services/" + name
+	servicePath := "services/" + name
 
 	cmd := exec.Command("sh", "-c", buildCmd)
-	cmd.Dir = dir
+	cmd.Dir = servicePath
 	err := cmd.Run()
 	if err != nil {
 		msg := "failed to build: " + name
@@ -75,36 +87,24 @@ func BuildService(name string, buildCmd string)  error {
 	return nil
 }
 
-func RunInstance(name string, command string) (int, error) {
-	if name == "" || command == "" {
-		return -1, errors.New("empty name or command")
-	}
-
-	dir := "services/" + name
-	args := strings.Split(command, " ")
-	binary := args[0]
-
-	if !fileutil.IsExist(dir) {
-		return -1, errors.New("service not found: " + name)
-	}
-
+func spawnProc(path string, binary string, args []string) (int, error) {
 	lIn, rOut, err := os.Pipe()
 	if err != nil {
 		log.Println(err)
 		return -1, err
 	}
 
-	path, err := exec.LookPath(dir + "/" + binary)
+	binPath, err := exec.LookPath(path + "/" + binary)
 	if err != nil {
 		log.Println(err)
 		return -1, err
 	}
-	_ = path
+	_ = binPath
 	_ = binary
 
 	var attr os.ProcAttr
-	// 切换到service所在目录
-	attr.Dir = dir
+	// 切换到instance所在目录
+	attr.Dir = path
 	attr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr, rOut}
 	proc, err := os.StartProcess(binary, args, &attr)
 
@@ -117,15 +117,6 @@ func RunInstance(name string, command string) (int, error) {
 	msg := fmt.Sprintf("Process %d started", proc.Pid)
 	log.Printf(msg)
 
-	// 簿记工作
-	stat := ProcStat{
-		Pid : proc.Pid,
-		Name : name,
-		Start  : time.Now().String(),
-		Args : command,
-	}
-	running = append(running, stat)
-	runningMap[proc.Pid] = len(running) - 1
 
 	go func(){
 		buf := make([]byte, 8)
@@ -140,11 +131,69 @@ func RunInstance(name string, command string) (int, error) {
 		}
 		idx := runningMap[pid]
 		_ = idx
-		
+
 		log.Printf("Process %d quited with status %d", pid, wstatus)
 	}()
 
 	return proc.Pid, nil
+}
+
+func RunInstance(instance Instance) (int, error) {
+	serviceName := instance.Service
+	name := instance.Name
+	path := instance.Path
+	command := instance.Cmd
+	
+	if serviceName == "" || command == "" {
+		return -1, errors.New("empty service or command")
+	}
+
+	servicePath := "services/" + serviceName
+	args := strings.Split(command, " ")
+	binary := args[0]
+
+	if !fileutil.IsExist(servicePath) {
+		return -1, errors.New("service not found: " + serviceName)
+	}
+
+	if path == "" {
+		// TODO:设置path为tempdir
+	}
+
+	// mkdir if path not exists
+	if err := fileutil.InsureDir(path); err !=  nil {
+		msg := fmt.Sprintf("fail to create path: %s : %s", path, err)
+		log.Println(msg)
+		return -1, errors.New(msg)
+	}
+
+	// 从servicePath复制到path
+	copyCmd := "cp " + servicePath + "/* " + path
+	cmd := exec.Command("sh", "-c", copyCmd)
+	err := cmd.Run()
+	if err != nil {
+		msg := fmt.Sprintf("fail to copy to: %s : %s", path, err)
+		log.Println(msg)
+		return -1, errors.New(msg)
+	}
+
+
+	pid, err := spawnProc(path, binary, args);
+	if err != nil {
+		return -1, err
+	}
+
+	// 簿记工作
+	stat := ProcStat{
+		Pid : pid,
+		Name : name,
+		Start  : time.Now().String(),
+		Args : command,
+	}
+	running = append(running, stat)
+	runningMap[pid] = len(running) - 1
+
+	return pid, nil
 }
 
 func ListInstance() string {
