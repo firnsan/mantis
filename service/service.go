@@ -39,7 +39,7 @@ var running []ProcStat
 var runningMap = make(map[int]int)
 var quited []ProcStat
 
-func GetService(name string, gitUrl string, autoUpdate bool) error {
+func DeployService(name string, gitUrl string, autoUpdate bool) error {
 	if name == "" || gitUrl == "" {
 		return errors.New("empty name or git")
 	}
@@ -138,12 +138,14 @@ func spawnProc(path string, binary string, args []string) (int, error) {
 	return proc.Pid, nil
 }
 
+
+// RunInstance 调用 spawnProc 建立子进程，并新建线程监听子进程
 func RunInstance(instance *Instance) (int, error) {
 	serviceName := instance.Service
 	name := instance.Name
 	path := instance.Path
 	command := instance.Cmd
-	
+
 	if serviceName == "" || command == "" {
 		return -1, errors.New("empty service or command")
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/firnsan/mantis/service"
 )
 
-func serviceGetHandler(res http.ResponseWriter, req *http.Request) {
+func serviceDeployHandler(res http.ResponseWriter, req *http.Request) {
 	if req.ContentLength == 0 {
 		http.Error(res, "empty body", http.StatusBadRequest)
 		return
@@ -28,7 +28,7 @@ func serviceGetHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// 下载服务
-	err := service.GetService(name, gitUrl, true)
+	err := service.DeployService(name, gitUrl, true)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
