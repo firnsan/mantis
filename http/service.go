@@ -5,6 +5,7 @@ import (
 	_ "log"
 	_ "fmt"
 	_ "strconv"
+	"encoding/json"
 	"github.com/firnsan/mantis/service"
 )
 
@@ -14,9 +15,16 @@ func serviceDeployHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	name := req.FormValue("service")
-	gitUrl := req.FormValue("git")
-	buildCmd := req.FormValue("build")
+	buf := make([]byte, req.ContentLength)
+	req.Body.Read(buf)
+
+	serv := new(service.Service)
+	json.Unmarshal(buf, serv)
+
+
+	name := serv.Name
+	gitUrl := serv.Git
+	buildCmd := serv.BuildCmd
 
 	if  name == "" {
 		http.Error(res, "empty service", http.StatusBadRequest)

@@ -16,7 +16,10 @@ import (
 )
 
 type Service struct {
+	Name string `json:name`
 	Git string `json:"git"`
+	Path string `json:"path"`
+	Cmd string `json:"cmd"`
 	BuildCmd string `json:"buildCmd"`
 }
 
